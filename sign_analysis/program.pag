@@ -1,62 +1,86 @@
-/*  1: */  TYPE
-/*  2: */  
-/*  3: */    ConstFlattened = flat(snum)
-/*  4: */    State          = Var -> ConstFlattened
-/*  5: */  
-/*  6: */  PROBLEM Constant_Propagation
-/*  7: */  
-/*  8: */    direction  : forward
-/*  9: */    carrier    : State
-/* 10: */    init       : bot
-/* 11: */    init_start : [-> top]
-/* 12: */    combine    : lub
-/* 13: */  
-/* 14: */  
-/* 15: */  TRANSFER
-/* 16: */  
-/* 17: */  // in assignments calculate the new value of the variable and add it to the state
-/* 18: */    ASSIGN(variable, expression) = 
-/* 19: */        @\[variable -> evalAExp(expression, @)]
-/* 20: */  
-/* 21: */  // in procedur calls pass the value of the actual argument to the formal parameter
-/* 22: */    CALL(_, param, exp), call_edge = 
-/* 23: */        @\[param -> evalAExp(exp, @)]
-/* 24: */  
-/* 25: */    CALL(_, _, _), local_edge = bot
-/* 26: */  
-/* 27: */  
-/* 28: */  // at the end of procedures reset the formal parameter
-/* 29: */    END(_, param) =
-/* 30: */        @\[param -> top]
-/* 31: */  
-/* 32: */  SUPPORT
-/* 33: */  
-/* 34: */    evalAExp :: Expression * State -> ConstFlattened
-/* 35: */    evalAExp(expression, state) =
-/* 36: */      case expType(expression) of
-/* 37: */        "ARITH_BINARY" => case expOp(expression) of
-/* 38: */          "+" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
-/* 39: */                     valRight <= evalAExp(expSubRight(expression), state) in
-/* 40: */                   lift(valLeft + valRight);
-/* 41: */          "-" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
-/* 42: */                     valRight <= evalAExp(expSubRight(expression), state) in
-/* 43: */                   lift(valLeft - valRight);
-/* 44: */          "*" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
-/* 45: */                     valRight <= evalAExp(expSubRight(expression), state) in
-/* 46: */                   lift(valLeft * valRight);
-/* 47: */          "/" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
-/* 48: */                     valRight <= evalAExp(expSubRight(expression), state) in
-/* 49: */                   if valRight = 0 then
-/* 50: */                     top
-/* 51: */                   else lift(valLeft / valRight) endif;
-/* 52: */          endcase;
-/* 53: */        "ARITH_UNARY" =>
-/* 54: */  	case expOp(expression) of
-/* 55: */            "-" => let value <= evalAExp(expSub(expression), state) in
-/* 56: */                     lift(-(value));
-/* 57: */          endcase;
-/* 58: */        "VAR"   => state ( expVar(expression) );
-/* 59: */        "CONST" => lift(expVal(expression));
-/* 60: */        _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
-/* 61: */      endcase
+TYPE
 
+  ConstSet       = set(snum)
+  ConstSetList   = list(ConstSet)
+  ConstFlattened = flat(ConstSet)
+  State          = Var -> ConstFlattened
+
+PROBLEM Sign_Analysis
+
+  direction  : forward
+  carrier    : State
+  init       : bot
+  init_start : [-> top]
+  combine    : lub
+
+
+TRANSFER
+
+// in assignments calculate the new value of the variable and add it to the state
+  ASSIGN(variable, expression) = 
+      @\[variable -> evalAExp(expression, @)]
+
+// in procedur calls pass the value of the actual argument to the formal parameter
+  CALL(_, param, exp), call_edge = 
+      @\[param -> evalAExp(exp, @)]
+
+  CALL(_, _, _), local_edge = bot
+
+
+// at the end of procedures reset the formal parameter
+  END(_, param) =
+      @\[param -> top]
+
+SUPPORT
+
+  evalAExp :: Expression * State -> ConstFlattened
+  evalAExp(expression, state) =
+    case expType(expression) of
+      "ARITH_BINARY" => case expOp(expression) of
+        "+" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valsRight <= evalAExp(expSubRight(expression), state) in
+                reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ]);
+        "-" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valsRight <= evalAExp(expSubRight(expression), state) in
+                reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in opposite(valsRight) ]);
+        "*" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valsRight <= evalAExp(expSubRight(expression), state) in
+                lift({ x1*x2 | x1 in valsLeft; x2 in valsRight });
+        "/" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valsRight <= evalAExp(expSubRight(expression), state) in
+                if 0 ? valsRight
+                then top
+                else lift({ x1*x2 | x1 in valsLeft; x2 in valsRight })
+                endif;
+        endcase;
+      "ARITH_UNARY" =>
+        case expOp(expression) of
+          "-" => let vals <= evalAExp(expSub(expression), state) in
+                   lift(opposite(vals));
+        endcase;
+      "VAR"   => state ( expVar(expression) );
+      "CONST" => lift({ sgn(expVal(expression)) });
+      _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
+    endcase
+
+  opposite :: ConstSet -> ConstSet
+  opposite(xs) = { -x | x in xs }
+
+  plusop :: snum * snum -> ConstSet
+  plusop(x1, x2) =
+    let plusf = [->{42}] \ [
+        (-1, -1) -> { -1 },
+        (-1,  0) -> { -1 },
+        (-1,  1) -> { -1, 0, 1 },
+        ( 0, -1) -> { -1 },
+        ( 0,  0) -> { 0 },
+        ( 0,  1) -> { 1 },
+        ( 1, -1) -> { -1, 0, 1 },
+        ( 1,  0) -> { 1 },
+        ( 1,  1) -> { 1 }
+      ] in plusf((x1,x2))
+
+  reduceSets :: ConstSetList -> ConstFlattened
+  reduceSets([]) = lift({})
+  reduceSets(x:[]) = lift(x)
+  reduceSets(x1:x2:t) = reduceSets(union(x1, x2):t)
