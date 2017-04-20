@@ -1,0 +1,30 @@
+program UpwardsExposed1
+  /* example which checks behaviour of shadowing global variable */
+
+  proc a(d)
+  begin
+    x := 4;
+    d := 4;
+    call aa(7);
+    b := d + 3;
+  end
+
+  proc aa(d)
+  begin
+    x := 4;
+    d := 4;
+  end
+
+  proc bb(y)
+  begin
+    z := y + d;
+  end
+
+begin
+  c := 3;
+  call bb(5);
+  d := 6;
+  call a(5);
+  z := b + c + d;
+end
+

@@ -1,0 +1,57 @@
+TYPE
+
+  VarUsePair    = Var * Label
+  VarUsePairSet = set(VarUsePair)
+  VarSetLifted  = lift(VarUsePairSet)
+
+PROBLEM Upwards_Exposed
+
+  direction  : backward
+  carrier    : VarSetLifted
+  init       : bot
+  init_start : lift({})
+  combine    : lub
+
+TRANSFER
+
+  ASSIGN(variable, expression) =
+      let currentUses <= @,
+          usesForCurrentVar = { (variable, l) | l in labels },
+          usesInExpression = { (v, label) | v in variables(expression) } in
+        lift((currentUses - usesForCurrentVar) lub usesInExpression)
+
+  IF(expression) =
+    let currentUses <= @,
+        usesInExpression = { (v, label) | v in variables(expression) } in
+      lift(currentUses lub usesInExpression)
+  
+  WHILE(expression) =
+    let currentUses <= @,
+        usesInExpression = { (v, label) | v in variables(expression) } in
+      lift(currentUses lub usesInExpression)
+
+  BEGIN(_, param), call_edge =
+      let currentUses <= @ in
+        lift({ (v,l) | (v, l) in currentUses; v != param })
+
+  RET(_, param, exp), local_edge = bot
+
+SUPPORT
+
+  subExpressions :: Expression -> ExpressionSet
+  subExpressions(expression) =
+    case expType(expression) of
+      "ARITH_BINARY" => subExpressions(expSubLeft(expression)) lub
+                        subExpressions(expSubRight(expression));
+      "ARITH_UNARY"  => subExpressions(expSub(expression));
+      "BOOL_BINARY"  => subExpressions(expSubLeft(expression)) lub
+                        subExpressions(expSubRight(expression));
+      "BOOL_UNARY"   => subExpressions(expSub(expression));
+      _              => {}; 
+    endcase
+    + expression
+
+  variables :: Expression -> VarSet
+  variables(expression) =
+    { expVar(exp) | exp in subExpressions(expression);
+                    expType(exp) = "VAR" }
