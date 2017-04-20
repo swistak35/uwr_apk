@@ -3,14 +3,14 @@ TYPE
   ConstSet       = set(snum)
   ConstSetList   = list(ConstSet)
   ConstFlattened = flat(ConstSet)
-  State          = Var -> ConstFlattened
+  State          = Var -> ConstSet
 
 PROBLEM Sign_Analysis
 
   direction  : forward
   carrier    : State
   init       : bot
-  init_start : [-> top]
+  init_start : [-> all]
   combine    : lub
 
 
@@ -33,33 +33,33 @@ TRANSFER
 
 SUPPORT
 
-  evalAExp :: Expression * State -> ConstFlattened
+  evalAExp :: Expression * State -> ConstSet
   evalAExp(expression, state) =
     case expType(expression) of
       "ARITH_BINARY" => case expOp(expression) of
-        "+" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
-                   valsRight <= evalAExp(expSubRight(expression), state) in
+        "+" => let valsLeft  = evalAExp(expSubLeft(expression),  state),
+                   valsRight = evalAExp(expSubRight(expression), state) in
                 reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ]);
-        "-" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
-                   valsRight <= evalAExp(expSubRight(expression), state) in
+        "-" => let valsLeft  = evalAExp(expSubLeft(expression),  state),
+                   valsRight = evalAExp(expSubRight(expression), state) in
                 reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in opposite(valsRight) ]);
-        "*" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
-                   valsRight <= evalAExp(expSubRight(expression), state) in
-                lift({ x1*x2 | x1 in valsLeft; x2 in valsRight });
-        "/" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
-                   valsRight <= evalAExp(expSubRight(expression), state) in
+        "*" => let valsLeft  = evalAExp(expSubLeft(expression),  state),
+                   valsRight = evalAExp(expSubRight(expression), state) in
+                ({ x1*x2 | x1 in valsLeft; x2 in valsRight });
+        "/" => let valsLeft  = evalAExp(expSubLeft(expression),  state),
+                   valsRight = evalAExp(expSubRight(expression), state) in
                 if 0 ? valsRight
-                then top
-                else lift({ x1*x2 | x1 in valsLeft; x2 in valsRight })
+                then { 42 }
+                else ({ x1*x2 | x1 in valsLeft; x2 in valsRight })
                 endif;
         endcase;
       "ARITH_UNARY" =>
         case expOp(expression) of
-          "-" => let vals <= evalAExp(expSub(expression), state) in
-                   lift(opposite(vals));
+          "-" => let vals = evalAExp(expSub(expression), state) in
+                   (opposite(vals));
         endcase;
       "VAR"   => state ( expVar(expression) );
-      "CONST" => lift({ sgn(expVal(expression)) });
+      "CONST" => ({ sgn(expVal(expression)) });
       _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
     endcase
 
@@ -80,7 +80,7 @@ SUPPORT
         ( 1,  1) -> { 1 }
       ] in plusf((x1,x2))
 
-  reduceSets :: ConstSetList -> ConstFlattened
-  reduceSets([]) = lift({})
-  reduceSets(x:[]) = lift(x)
+  reduceSets :: ConstSetList -> ConstSet
+  reduceSets([]) = ({})
+  reduceSets(x:[]) = (x)
   reduceSets(x1:x2:t) = reduceSets(union(x1, x2):t)
