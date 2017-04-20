@@ -1,0 +1,57 @@
+TYPE
+
+  /*
+    I'm assuming slightly different problem, than what's specified on the website.
+    On the website there is: "The copy-propagation analysis determines for each program point if there is a path to it from a copy assignment, say x := y, where there are no assignments to y. "
+    I believe what we want is "... if all paths to it from a copy assignment ...", which is in the sense of what was in the task 4.4
+  */
+
+  VarVarPair = Var * Var
+  VarVarPairSet = set(VarVarPair)
+  VarVarPairSetLifted = lift(VarVarPairSet)
+
+PROBLEM Copy_Propagation
+
+  direction  : forward
+  carrier    : VarVarPairSetLifted
+  init       : top
+  init_start : lift({})
+  combine    : glb
+
+TRANSFER
+
+  ASSIGN(var, exp) =  
+    let entry <= @,
+        kill = { (v, var) | v in vars },
+        gen = if expType(exp) = "VAR"
+              then { (var, expVar(exp)) }
+              else {}
+              endif in
+      lift((entry - kill) lub gen)
+
+  // 
+  // Interprocedural stuff
+  // 
+
+  CALL(_, _, _), local_edge = top
+
+  END(_, param), return_edge =
+    let entry <= @,
+        kill1 = { (v, param) | v in vars },
+        kill2 = { (param, v) | v in vars }
+      in lift((entry - kill1) - kill2)
+
+  /*
+  CALL(_, param,_), local_edge = // save param across recursive calls
+    let entry <= @ in
+      lift({varlab | varlab in entry; varlab#1 = param})
+
+  CALL(_, param, _), call_edge = // delete param at recursive call
+    let entry <= @ in
+      lift({varlab | varlab in entry; !(varlab#1 = param)})
+
+  END(_, param), return_edge = // forget param at return point
+    let entry <= @ in
+      lift({varlab | varlab in entry; !(varlab#1 = param)})
+
+  */

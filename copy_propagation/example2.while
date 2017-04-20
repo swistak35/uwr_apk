@@ -1,0 +1,17 @@
+program CopyPropagation2
+  // checking recursion
+
+  proc p(x)
+  begin
+    y := x;
+    if (i < 3) (
+      call p(3);
+    ) else (
+      y := x
+    )
+    z := y + 3 // at this point, (y,x) CANNOT be in the set!
+  end
+
+begin
+  call p(5);
+end
