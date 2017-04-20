@@ -1,0 +1,13 @@
+program ParityAnalysis1
+  /* example which checks behaviour of shadowing global variable */
+
+  proc a(x)
+  begin
+    x := 4
+  end
+
+begin
+  x := 5;
+  call a(6);
+  y := 4;
+end

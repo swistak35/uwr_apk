@@ -39,18 +39,18 @@ SUPPORT
       "ARITH_BINARY" => case expOp(expression) of
         "+" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
-                reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ]);
+                liftUp({ (x1 + x2) % 2 | x1 in valsLeft; x2 in valsRight });
         "-" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
-                reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ]);
+                liftUp({ (x1 + x2) % 2 | x1 in valsLeft; x2 in valsRight });
         "*" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
-                reduceSets([ multop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ]);
+                liftUp({ (x1 * x2) % 2 | x1 in valsLeft; x2 in valsRight });
         "/" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
                 if 0 ? valsRight
                 then top
-                else reduceSets([ multop(x1, x2) | x1 in (valsLeft); x2 in (valsRight) ])
+                else liftUp({ (x1 * x2) % 2 | x1 in valsLeft; x2 in valsRight })
                 endif;
         endcase;
       "ARITH_UNARY" =>
@@ -61,32 +61,6 @@ SUPPORT
       "CONST" => lift({ (expVal(expression) % 2) });
       _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
     endcase
-
-  opposite :: ConstSet -> ConstSet
-  opposite(xs) = { -x | x in xs }
-
-  plusop :: snum * snum -> ConstSet
-  plusop(x1, x2) =
-    let plusf = [->{}] \ [
-        (0, 0) -> { 1 },
-        (0, 1) -> { 0 },
-        (1, 0) -> { 0 },
-        (1, 1) -> { 1 }
-      ] in plusf((x1,x2))
-
-  multop :: snum * snum -> ConstSet
-  multop(x1, x2) =
-    let plusf = [->{}] \ [
-        (0, 0) -> { 0 },
-        (0, 1) -> { 0 },
-        (1, 0) -> { 0 },
-        (1, 1) -> { 1 }
-      ] in plusf((x1,x2))
-
-  reduceSets :: ConstSetList -> ConstFlattened
-  reduceSets([]) = liftUp({})
-  reduceSets(x:[]) = liftUp(x)
-  reduceSets(x1:x2:t) = reduceSets(union(x1, x2):t)
 
   liftUp :: ConstSet -> ConstFlattened
   liftUp(xs) =
