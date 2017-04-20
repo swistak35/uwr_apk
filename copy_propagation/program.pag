@@ -40,18 +40,3 @@ TRANSFER
         kill1 = { (v, param) | v in vars },
         kill2 = { (param, v) | v in vars }
       in lift((entry - kill1) - kill2)
-
-  /*
-  CALL(_, param,_), local_edge = // save param across recursive calls
-    let entry <= @ in
-      lift({varlab | varlab in entry; varlab#1 = param})
-
-  CALL(_, param, _), call_edge = // delete param at recursive call
-    let entry <= @ in
-      lift({varlab | varlab in entry; !(varlab#1 = param)})
-
-  END(_, param), return_edge = // forget param at return point
-    let entry <= @ in
-      lift({varlab | varlab in entry; !(varlab#1 = param)})
-
-  */

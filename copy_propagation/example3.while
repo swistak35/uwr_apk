@@ -1,18 +1,33 @@
 program CopyPropagation3
   // checking recursion 2
+  // unfortunately it does not work correctly for the first example
+  //    which is semi-bad - analysis is safe, it just could "know more"
 
-  proc p(x)
+  proc p1(x)
   begin
     x := y;
     if (z < 7) (
-      call p(3);
+      call p1(3);
     ) else (
       skip;
     )
     z := x + 3 // at this point, (x,y) MUST be in the set!
   end
 
+  proc p2(x)
+  begin
+    x := y;
+    if (z < 7) (
+      call p2(3);
+    ) else (
+      skip;
+    )
+    z := x + 3 // at this point, (x,y) CANNOT be in the set!
+    y := 17;
+  end
+
 begin
-  call p(5);
+  call p1(5);
+  call p2(5);
 end
 
