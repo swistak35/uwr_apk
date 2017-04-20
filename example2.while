@@ -5,14 +5,11 @@ begin
   b := 8;
   c := 3;
   d := 0;
-  while true do (
-    d := d * -17;
-    a := 4;
-    c := 4;
-    b := a + c;
-    c := 7 - a;
-    d := 19 - c;
-  )
+  d := d + a
+  d := d * -17;
+  b := a + c;
+  c := 7 - a;
+  d := 19 - c;
   a := b / 0;
   b := a * d;
 end

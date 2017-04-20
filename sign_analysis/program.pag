@@ -45,18 +45,18 @@ SUPPORT
                 reduceSets([ plusop(x1, x2) | x1 in (valsLeft); x2 in opposite(valsRight) ]);
         "*" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
-                lift({ x1*x2 | x1 in valsLeft; x2 in valsRight });
+                liftUp({ x1*x2 | x1 in valsLeft; x2 in valsRight });
         "/" => let valsLeft  <= evalAExp(expSubLeft(expression),  state),
                    valsRight <= evalAExp(expSubRight(expression), state) in
                 if 0 ? valsRight
                 then top
-                else lift({ x1*x2 | x1 in valsLeft; x2 in valsRight })
+                else liftUp({ x1*x2 | x1 in valsLeft; x2 in valsRight })
                 endif;
         endcase;
       "ARITH_UNARY" =>
         case expOp(expression) of
           "-" => let vals <= evalAExp(expSub(expression), state) in
-                   lift(opposite(vals));
+                   liftUp(opposite(vals));
         endcase;
       "VAR"   => state ( expVar(expression) );
       "CONST" => lift({ sgn(expVal(expression)) });
@@ -81,6 +81,13 @@ SUPPORT
       ] in plusf((x1,x2))
 
   reduceSets :: ConstSetList -> ConstFlattened
-  reduceSets([]) = lift({})
-  reduceSets(x:[]) = lift(x)
+  reduceSets([]) = liftUp({})
+  reduceSets(x:[]) = liftUp(x)
   reduceSets(x1:x2:t) = reduceSets(union(x1, x2):t)
+
+  liftUp :: ConstSet -> ConstFlattened
+  liftUp(xs) =
+    if xs = {-1, 0, 1}
+    then top
+    else lift(xs)
+    endif
