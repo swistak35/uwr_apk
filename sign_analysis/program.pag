@@ -1,0 +1,62 @@
+/*  1: */  TYPE
+/*  2: */  
+/*  3: */    ConstFlattened = flat(snum)
+/*  4: */    State          = Var -> ConstFlattened
+/*  5: */  
+/*  6: */  PROBLEM Constant_Propagation
+/*  7: */  
+/*  8: */    direction  : forward
+/*  9: */    carrier    : State
+/* 10: */    init       : bot
+/* 11: */    init_start : [-> top]
+/* 12: */    combine    : lub
+/* 13: */  
+/* 14: */  
+/* 15: */  TRANSFER
+/* 16: */  
+/* 17: */  // in assignments calculate the new value of the variable and add it to the state
+/* 18: */    ASSIGN(variable, expression) = 
+/* 19: */        @\[variable -> evalAExp(expression, @)]
+/* 20: */  
+/* 21: */  // in procedur calls pass the value of the actual argument to the formal parameter
+/* 22: */    CALL(_, param, exp), call_edge = 
+/* 23: */        @\[param -> evalAExp(exp, @)]
+/* 24: */  
+/* 25: */    CALL(_, _, _), local_edge = bot
+/* 26: */  
+/* 27: */  
+/* 28: */  // at the end of procedures reset the formal parameter
+/* 29: */    END(_, param) =
+/* 30: */        @\[param -> top]
+/* 31: */  
+/* 32: */  SUPPORT
+/* 33: */  
+/* 34: */    evalAExp :: Expression * State -> ConstFlattened
+/* 35: */    evalAExp(expression, state) =
+/* 36: */      case expType(expression) of
+/* 37: */        "ARITH_BINARY" => case expOp(expression) of
+/* 38: */          "+" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+/* 39: */                     valRight <= evalAExp(expSubRight(expression), state) in
+/* 40: */                   lift(valLeft + valRight);
+/* 41: */          "-" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+/* 42: */                     valRight <= evalAExp(expSubRight(expression), state) in
+/* 43: */                   lift(valLeft - valRight);
+/* 44: */          "*" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+/* 45: */                     valRight <= evalAExp(expSubRight(expression), state) in
+/* 46: */                   lift(valLeft * valRight);
+/* 47: */          "/" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+/* 48: */                     valRight <= evalAExp(expSubRight(expression), state) in
+/* 49: */                   if valRight = 0 then
+/* 50: */                     top
+/* 51: */                   else lift(valLeft / valRight) endif;
+/* 52: */          endcase;
+/* 53: */        "ARITH_UNARY" =>
+/* 54: */  	case expOp(expression) of
+/* 55: */            "-" => let value <= evalAExp(expSub(expression), state) in
+/* 56: */                     lift(-(value));
+/* 57: */          endcase;
+/* 58: */        "VAR"   => state ( expVar(expression) );
+/* 59: */        "CONST" => lift(expVal(expression));
+/* 60: */        _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
+/* 61: */      endcase
+
