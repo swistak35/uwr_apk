@@ -1,5 +1,9 @@
 TYPE
 
+  /*
+    This analysis does not work, PAG/WWW responds with Segmentation fault
+  */
+
   ConstFlattened = flat(snum)
   VarConstPair   = Var * snum
   VarConstSet    = set(VarConstPair)
