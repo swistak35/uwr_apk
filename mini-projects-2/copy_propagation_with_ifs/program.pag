@@ -1,0 +1,95 @@
+TYPE
+
+  ConstFlattened = flat(snum)
+  VarConstPair   = Var * snum
+  VarConstSet    = set(VarConstPair)
+  VarConstFlatPair = Var * ConstFlattened
+  VarConstFlatPairSet = set(VarConstFlatPair)
+  State          = Var -> ConstFlattened
+
+PROBLEM Constant_Propagation
+
+  direction  : forward
+  carrier    : State
+  init       : bot
+  init_start : [-> top]
+  combine    : lub
+
+
+TRANSFER
+
+// in assignments calculate the new value of the variable and add it to the state
+  ASSIGN(variable, expression) = 
+      @\[variable -> evalAExp(expression, @)]
+
+// in procedur calls pass the value of the actual argument to the formal parameter
+  CALL(_, param, exp), call_edge = 
+      @\[param -> evalAExp(exp, @)]
+
+  IF (exp), true_edge =
+    let additionalConstraints = constraintsFromExp(exp, @) in [ @ \ (v,c) | (v,c) in additionalConstraints ]
+
+  CALL(_, _, _), local_edge = bot
+
+
+// at the end of procedures reset the formal parameter
+  END(_, param) =
+      @\[param -> top]
+
+SUPPORT
+
+  evalAExp :: Expression * State -> ConstFlattened
+  evalAExp(expression, state) =
+    case expType(expression) of
+      "ARITH_BINARY" => case expOp(expression) of
+        "+" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valRight <= evalAExp(expSubRight(expression), state) in
+                 lift(valLeft + valRight);
+        "-" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valRight <= evalAExp(expSubRight(expression), state) in
+                 lift(valLeft - valRight);
+        "*" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valRight <= evalAExp(expSubRight(expression), state) in
+                 lift(valLeft * valRight);
+        "/" => let valLeft  <= evalAExp(expSubLeft(expression),  state),
+                   valRight <= evalAExp(expSubRight(expression), state) in
+                 if valRight = 0 then
+                   top
+                 else lift(valLeft / valRight) endif;
+        endcase;
+      "ARITH_UNARY" =>
+        case expOp(expression) of
+          "-" => let value <= evalAExp(expSub(expression), state) in
+                   lift(-(value));
+        endcase;
+      "VAR"   => state ( expVar(expression) );
+      "CONST" => lift(expVal(expression));
+      _       => error("Runtime Error: evalAExp applied to nonarithmetic Expression");
+    endcase
+
+  constraintsFromExp :: Expression * State -> VarConstSet
+  constraintsFromExp(exp, state) =
+    case expType(exp) of
+      "BOOL_BINARY" => case expOp(exp) of
+
+          // for readability reasons, I'm assuming that variable is always on the left side - handling the same on the right hand side is dual
+          "=" =>  let lexp = expSubLeft(exp),
+                      rexp = expSubRight(exp)
+                    in  if isVar(lexp)
+                        then mkVarConstSet(expVar(lexp), rexp, state)
+                        else {}
+                        endif;
+        endcase;
+      _ => {};
+    endcase
+
+    isVar :: Expression -> bool
+    isVar(exp) = (expType(exp) = "VAR")
+
+    mkVarConstSet :: Var * Expression * State -> VarConstSet
+    mkVarConstSet(v, exp, state) =
+      let expResult = evalAExp(exp, state)
+      in  if expResult = top || expResult = bot
+          then {}
+          else { (v, drop(expResult)) }
+          endif

@@ -1,0 +1,8 @@
+program ConstantPropagationWithIfs
+begin
+  if (i = 3) (
+    a := i + 4; // should have x -> 7
+  ) else (
+    a := i + 4; // should not have x -> 7
+  )
+end
