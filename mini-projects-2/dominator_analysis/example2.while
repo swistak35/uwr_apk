@@ -1,0 +1,21 @@
+program DominatorAnalysis2
+  proc pa(d)
+  begin
+    a := 3;
+  end
+
+  proc pb(b)
+  begin
+    b := 3;
+  end
+
+begin
+  if (i < 3) (
+    x := y + 1;
+  ) else (
+    x := y + 1;
+  )
+  call pa(5);
+  call pb(5);
+  z := 3; // should be empty at entry point
+end

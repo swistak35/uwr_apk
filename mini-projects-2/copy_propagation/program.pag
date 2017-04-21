@@ -4,6 +4,8 @@ TYPE
     I'm assuming slightly different problem, than what's specified on the website.
     On the website there is: "The copy-propagation analysis determines for each program point if there is a path to it from a copy assignment, say x := y, where there are no assignments to y. "
     I believe what we want is "... if all paths to it from a copy assignment ...", which is in the sense of what was in the task 4.4
+
+    Also it does not work totally fine interprocedurally (this one is safe analysis, but just not perfect. Check example3.while). It could be fixed, but check dominator analysis for details why I haven't proceed (the error).
   */
 
   VarVarPair = Var * Var

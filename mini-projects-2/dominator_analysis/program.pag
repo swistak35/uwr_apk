@@ -1,0 +1,22 @@
+TYPE
+  LabelSetLifted = lift(LabelSet)
+
+  /*
+    It DOES NOT work interprocedurally. At least probably not with semantics we would like it to have.
+  */
+
+PROBLEM Dominator_Analysis
+
+  direction  : forward
+  carrier    : LabelSetLifted
+  init       : top
+  init_start : lift({})
+  combine    : glb
+
+TRANSFER
+
+  ASSIGN(var, exp) =  
+    let entry <= @ in
+      lift(entry lub { label })
+
+  CALL(_, _, _), local_edge = top
