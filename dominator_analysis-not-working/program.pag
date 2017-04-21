@@ -1,0 +1,31 @@
+TYPE
+  
+  /*
+    For some completely unknown reason for me, it does not work.
+    During analysis it gives error:
+      sh: 1: /var/www/pagwww/webfront/analyses/1492759507.2865/analyzer.cgi: not found
+  */
+
+  Pair = Label * Proc
+  PairSet = set(Pair)
+  PairSetLifted = lift(PairSet)
+
+PROBLEM Dominator_Analysis
+
+  direction  : forward
+  carrier    : PairSetLifted
+  init       : top
+  init_start : lift({})
+  combine    : glb
+
+TRANSFER
+
+  ASSIGN(var, exp) =  
+    let entry <= @ in
+      lift(entry lub { (label, proc) })
+
+  // 
+  // Interprocedural stuff
+  // 
+
+  CALL(_, _, _), local_edge = top
